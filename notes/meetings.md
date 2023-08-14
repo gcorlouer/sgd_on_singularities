@@ -50,3 +50,34 @@ Fokker Plank?
 Send invide to Edmund
 
 Ask person I know
+
+# Nicolas 08-08-2023
+
+* Discussion with Edmund:
+  * Similar perspective on the problem
+  * Review calculation made with covariance of noise
+  * Suggestion to work on explicit calculation with \xi_b
+  * Difficulty calibration SGD and GD + noise 
+* Progress on the simulation
+  * SGD on 1D model
+* Look at bibliography on agency
+
+ToDo
+
+* Review of literature of SGD
+* Check differential and Fokker plank
+* Numerical experiments
+* Explicit \xi_b
+* Collaboration good
+
+Focaliser sur choses numeriques ou analytiques?
+
+Quel models sont interessant a regarder. 
+
+Why model 2D and not 1D?
+
+Discuss with JC Mourrat
+
+Look at Fokker Plank equation
+
+Next steps:
