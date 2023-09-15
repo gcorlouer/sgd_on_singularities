@@ -1,5 +1,5 @@
 # Ignore subfolders
-
+*.dat
 lab_notebook/
 **checkpoint**
 *.pyc
