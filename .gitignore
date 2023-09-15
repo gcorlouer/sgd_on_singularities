@@ -2,4 +2,6 @@
 
 lab_notebook/
 primer/
-
+*.dat
+**checkpoint**
+*.pyc
