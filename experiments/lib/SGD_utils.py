@@ -35,6 +35,38 @@ class SGD:
             wc = self.update(wc)
             self.w.append(wc)
 
+class SGDInfiniteData:
+    """
+    Exact SGD dynamics
+    """
+    def __init__(self, std_epsilon, lr, q, grad_q, w_init, batchsize, seed):
+        """
+        lr: learning rate
+        q: model
+        grad_q: gradient of the model
+        """
+        self.lr = lr
+        self.q = q
+        self.grad_q = grad_q
+        self.nb = batchsize
+        self.w = [w_init]
+        self.state = np.random.RandomState(seed=seed)
+        self.std_epsilon = std_epsilon
+        
+    def update(self, w_old):
+        xb = self.state.normal(size=self.nb)
+        yb = self.state.normal(size=self.nb, scale=self.std_epsilon)
+        
+        xi_xx = np.mean(xb*xb)
+        xi_xy = np.mean(xb*yb)
+        return w_old - self.lr*(xi_xx * self.q(w_old) - xi_xy) * self.grad_q(w_old)
+    
+    def evolve(self, nstep):
+        wc = self.w[-1]
+        for _ in range(nstep):
+            wc = self.update(wc)
+            self.w.append(wc)
+
 def save_data(std_epsilon, lr, q, grad_q, w_init, nsamp, batchsize, seed, nsteps, filename):
     sgd = SGD(std_epsilon, lr, q, grad_q, w_init, nsamp, batchsize, seed)
     sgd.evolve(nsteps)
