@@ -1,41 +1,41 @@
 import numpy as np
 
-class SGD:
-    """
-    Exact SGD dynamics
-    """
-    def __init__(self, std_epsilon, lr, q, grad_q, w_init, nsamp, batchsize, seed):
-        """
-        lr: learning rate
-        q: model
-        grad_q: gradient of the model
-        """
-        self.lr = lr
-        self.q = q
-        self.grad_q = grad_q
-        self.nb = batchsize
-        self.w = [w_init]
-        self.state = np.random.RandomState(seed=seed)
-        self.std_epsilon = std_epsilon
-        # uncorrelated X and Y data
-        self.x = self.state.normal(size=nsamp)
-        self.y = self.state.normal(size=nsamp, scale=std_epsilon)
+# class SGD:
+#     """
+#     Exact SGD dynamics
+#     """
+#     def __init__(self, std_epsilon, lr, q, grad_q, w_init, nsamp, batchsize, seed):
+#         """
+#         lr: learning rate
+#         q: model
+#         grad_q: gradient of the model
+#         """
+#         self.lr = lr
+#         self.q = q
+#         self.grad_q = grad_q
+#         self.nb = batchsize
+#         self.w = [w_init]
+#         self.state = np.random.RandomState(seed=seed)
+#         self.std_epsilon = std_epsilon
+#         # uncorrelated X and Y data
+#         self.x = self.state.normal(size=nsamp)
+#         self.y = self.state.normal(size=nsamp, scale=std_epsilon)
         
-    def update(self, w_old):
-        xb = self.state.choice(self.x, self.nb, replace=False)
-        yb = self.state.choice(self.y, self.nb, replace=False)
+#     def update(self, w_old):
+#         xb = self.state.choice(self.x, self.nb, replace=False)
+#         yb = self.state.choice(self.y, self.nb, replace=False)
         
-        xi_xx = np.mean(xb*xb)
-        xi_xy = np.mean(xb*yb)
-        return w_old - self.lr*(xi_xx * self.q(w_old) - xi_xy) * self.grad_q(w_old)
+#         xi_xx = np.mean(xb*xb)
+#         xi_xy = np.mean(xb*yb)
+#         return w_old - self.lr*(xi_xx * self.q(w_old) - xi_xy) * self.grad_q(w_old)
     
-    def evolve(self, nstep):
-        wc = self.w[-1]
-        for _ in range(nstep):
-            wc = self.update(wc)
-            self.w.append(wc)
+#     def evolve(self, nstep):
+#         wc = self.w[-1]
+#         for _ in range(nstep):
+#             wc = self.update(wc)
+#             self.w.append(wc)
 
-class SGDInfiniteData:
+class SGD:
     """
     Exact SGD dynamics
     """
@@ -52,6 +52,14 @@ class SGDInfiniteData:
         self.w = [w_init]
         self.state = np.random.RandomState(seed=seed)
         self.std_epsilon = std_epsilon
+
+        self.f = self.std_epsilon/np.sqrt(2.)
+        self.sqb = np.sqrt(self.nb)
+
+        # save noise (noise terms normalized such that they converge to Normal(0,1) in the large batchsize limit)
+        self.save_noise_terms = True
+        self.xi1 = []
+        self.xi2 = []
         
     def update(self, w_old):
         xb = self.state.normal(size=self.nb)
@@ -59,13 +67,86 @@ class SGDInfiniteData:
         
         xi_xx = np.mean(xb*xb)
         xi_xy = np.mean(xb*yb)
-        return w_old - self.lr*(xi_xx * self.q(w_old) - xi_xy) * self.grad_q(w_old)
+        grad0 = (xi_xx * self.q(w_old) - xi_xy) * self.grad_q(w_old)
+
+        if self.save_noise_terms:
+            xi1 = np.sum(xb*xb-1.)/self.sqb
+            xi2 = np.sum(xb*yb)/(self.sqb * self.f)
+            self.xi1.append(xi1)
+            self.xi2.append(xi2)
+
+        # # comparison with decomposed gradient (works!)
+        # xi1 = np.sum(xb*xb-1.)/self.sqb
+        # xi2 = np.sum(xb*yb)/(self.sqb * self.f)
+        # grad_comp = self.q(w_old) + (self.q(w_old)*xi1 - self.f*xi2)/self.sqb
+        # grad_comp *= self.grad_q(w_old)
+        # print(grad_comp, grad0)
+        
+        return w_old - self.lr*grad0
     
     def evolve(self, nstep):
         wc = self.w[-1]
         for _ in range(nstep):
             wc = self.update(wc)
             self.w.append(wc)
+            # if np.isnan(wc):
+                # break
+
+class GDN:
+    """
+    Approximate SGD: GD + Gaussian noise
+    """
+    def __init__(self, std_epsilon, lr, q, grad_q, w_init, batchsize, seed):
+        """
+        lr: learning rate
+        q: model
+        grad_q: gradient of the model
+        """
+        self.lr = lr
+        self.q = q
+        self.grad_q = grad_q
+        self.nb = batchsize
+        self.w = [w_init]
+        self.state = np.random.RandomState(seed=seed)
+        self.std_epsilon = std_epsilon
+
+        self.f = self.std_epsilon/np.sqrt(2.)
+        self.sqb = np.sqrt(self.nb)
+
+        # save noise (noise terms normalized such that they converge to Normal(0,1) in the large batchsize limit)
+        self.save_noise_terms = True
+        self.xi1 = []
+        self.xi2 = []
+        
+    def update(self, w_old):
+        xi1, xi2 = self.state.normal(scale=np.sqrt(2), size=2)
+        
+        # xi_xx = np.mean(xb*xb)
+        # xi_xy = np.mean(xb*yb)
+        # grad0 = (xi_xx * self.q(w_old) - xi_xy) * self.grad_q(w_old)
+
+        # if self.save_noise_terms:
+        #     xi1 = np.sum(xb*xb-1.)/self.sqb
+        #     xi2 = np.sum(xb*yb)/(self.sqb * self.f)
+        #     self.xi1.append(xi1)
+        #     self.xi2.append(xi2)
+
+        # # comparison with decomposed gradient (works!)
+        # xi1 = np.sum(xb*xb-1.)/self.sqb
+        # xi2 = np.sum(xb*yb)/(self.sqb * self.f)
+        grad_comp = self.q(w_old) + (self.q(w_old)*xi1 - self.f*xi2)/self.sqb
+        grad_comp *= self.grad_q(w_old)
+        # print(grad_comp, grad0)
+        
+        return w_old - self.lr*grad_comp
+    
+    def evolve(self, nstep):
+        wc = self.w[-1]
+        for _ in range(nstep):
+            wc = self.update(wc)
+            self.w.append(wc)
+            # if np.isnan(wc):
+                # break
 
 def save_data(std_epsilon, lr, q, grad_q, w_init, nsamp, batchsize, seed, nsteps, filename):
     sgd = SGD(std_epsilon, lr, q, grad_q, w_init, nsamp, batchsize, seed)
