@@ -1,49 +1,15 @@
 import numpy as np
 
-# class SGD:
-#     """
-#     Exact SGD dynamics
-#     """
-#     def __init__(self, std_epsilon, lr, q, grad_q, w_init, nsamp, batchsize, seed):
-#         """
-#         lr: learning rate
-#         q: model
-#         grad_q: gradient of the model
-#         """
-#         self.lr = lr
-#         self.q = q
-#         self.grad_q = grad_q
-#         self.nb = batchsize
-#         self.w = [w_init]
-#         self.state = np.random.RandomState(seed=seed)
-#         self.std_epsilon = std_epsilon
-#         # uncorrelated X and Y data
-#         self.x = self.state.normal(size=nsamp)
-#         self.y = self.state.normal(size=nsamp, scale=std_epsilon)
-        
-#     def update(self, w_old):
-#         xb = self.state.choice(self.x, self.nb, replace=False)
-#         yb = self.state.choice(self.y, self.nb, replace=False)
-        
-#         xi_xx = np.mean(xb*xb)
-#         xi_xy = np.mean(xb*yb)
-#         return w_old - self.lr*(xi_xx * self.q(w_old) - xi_xy) * self.grad_q(w_old)
-    
-#     def evolve(self, nstep):
-#         wc = self.w[-1]
-#         for _ in range(nstep):
-#             wc = self.update(wc)
-#             self.w.append(wc)
-
 class SGD:
     """
     Exact SGD dynamics
     """
-    def __init__(self, std_epsilon, lr, q, grad_q, w_init, batchsize, seed):
+    def __init__(self, std_epsilon, lr, q, grad_q, w_init, batchsize, seed, pbc=False):
         """
         lr: learning rate
         q: model
         grad_q: gradient of the model
+        pbc: dynamics on the unit interval with periodic boundary conditions
         """
         self.lr = lr
         self.q = q
@@ -52,12 +18,13 @@ class SGD:
         self.w = [w_init]
         self.state = np.random.RandomState(seed=seed)
         self.std_epsilon = std_epsilon
+        self.pbc = pbc
 
         self.f = self.std_epsilon/np.sqrt(2.)
         self.sqb = np.sqrt(self.nb)
 
         # save noise (noise terms normalized such that they converge to Normal(0,1) in the large batchsize limit)
-        self.save_noise_terms = True
+        self.save_noise_terms = False
         self.xi1 = []
         self.xi2 = []
         
@@ -82,7 +49,11 @@ class SGD:
         # grad_comp *= self.grad_q(w_old)
         # print(grad_comp, grad0)
         
-        return w_old - self.lr*grad0
+        w_new = w_old - self.lr*grad0
+        if self.pbc:
+            w_new = w_new % 1.
+        return w_new
+            
     
     def evolve(self, nstep):
         wc = self.w[-1]
