@@ -67,11 +67,12 @@ class GDN:
     """
     Approximate SGD: GD + Gaussian noise
     """
-    def __init__(self, std_epsilon, lr, q, grad_q, w_init, batchsize, seed):
+    def __init__(self, std_epsilon, lr, q, grad_q, w_init, batchsize, seed, pbc=False):
         """
         lr: learning rate
         q: model
         grad_q: gradient of the model
+        pbc: dynamics on the unit interval with periodic boundary conditions
         """
         self.lr = lr
         self.q = q
@@ -80,6 +81,7 @@ class GDN:
         self.w = [w_init]
         self.state = np.random.RandomState(seed=seed)
         self.std_epsilon = std_epsilon
+        self.pbc = pbc
 
         self.f = self.std_epsilon/np.sqrt(2.)
         self.sqb = np.sqrt(self.nb)
@@ -108,8 +110,12 @@ class GDN:
         grad_comp = self.q(w_old) + (self.q(w_old)*xi1 - self.f*xi2)/self.sqb
         grad_comp *= self.grad_q(w_old)
         # print(grad_comp, grad0)
+
+        w_new = w_old - self.lr*grad_comp
+        if self.pbc:
+            w_new = w_new % 1.
         
-        return w_old - self.lr*grad_comp
+        return w_new
     
     def evolve(self, nstep):
         wc = self.w[-1]
